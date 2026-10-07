@@ -1,6 +1,13 @@
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata = {
   title: "Open Agent Phone — Autonomous Voice & SMS Gateway",
@@ -13,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-[#0d1117] text-[#e6edf3] antialiased flex h-screen overflow-hidden">
+    <html lang="en" className={`dark ${inter.variable}`}>
+      <body className={`${inter.className} bg-[#0d1117] text-[#e6edf3] antialiased flex h-screen overflow-hidden`}>
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header />
