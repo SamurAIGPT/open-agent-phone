@@ -11,7 +11,7 @@ export default function McpPage() {
     {
       mcpServers: {
         "open-agent-phone": {
-          url: "http://127.0.0.1:8001/mcp/rpc",
+          url: "http://127.0.0.1:8000/mcp/rpc",
         },
       },
     },
@@ -19,7 +19,7 @@ export default function McpPage() {
     2
   );
 
-  const claudeCommand = "claude mcp add open-agent-phone http://127.0.0.1:8001/mcp/rpc";
+  const claudeCommand = "claude mcp add open-agent-phone http://127.0.0.1:8000/mcp/rpc";
 
   const copyToClipboard = (text: string, type: "cursor" | "claude") => {
     navigator.clipboard.writeText(text);

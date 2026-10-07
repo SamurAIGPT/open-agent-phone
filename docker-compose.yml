@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: open-agent-phone-server
     ports:
-      - "8001:8001"
+      - "8000:8000"
     volumes:
       - ./server/open_agent_phone.db:/app/open_agent_phone.db
     restart: unless-stopped
@@ -18,9 +18,9 @@ services:
       dockerfile: Dockerfile
     container_name: open-agent-phone-client
     ports:
-      - "3001:3001"
+      - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8001
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - server
     restart: unless-stopped

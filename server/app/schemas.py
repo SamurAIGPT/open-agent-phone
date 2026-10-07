@@ -51,12 +51,40 @@ class LatestCodeResponse(BaseModel):
     received_at: Optional[datetime] = None
 
 
-# --- Voice Call Schemas ---
+# --- Voice Call & Mission Schemas ---
+class OperatorQueryCreate(BaseModel):
+    question: str = Field(..., example="The clerk asked for the reservation name. What name should I give?")
+    call_context: Optional[str] = Field(None, example="Booking dinner for 4 at 7 PM")
+    urgency: str = Field("normal", example="normal")
+
+class OperatorQueryAnswer(BaseModel):
+    answer: str = Field(..., example="Please use the name Jane Doe.")
+    answered_via: str = Field("dashboard", example="dashboard")
+
+class OperatorQueryResponse(BaseModel):
+    id: str
+    call_id: str
+    question: str
+    call_context: Optional[str] = None
+    urgency: str
+    status: str
+    answer: Optional[str] = None
+    asked_at: datetime
+    answered_at: Optional[datetime] = None
+    answered_via: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class VoiceCallInitiateRequest(BaseModel):
     phone_number_id: Optional[str] = None
     to_number: str = Field(..., example="+15551234567")
-    initial_greeting: Optional[str] = Field("Hello, I am your autonomous AI assistant. How can I help you today?")
+    task: Optional[str] = Field("You are an autonomous AI voice concierge assisting callers concisely.", example="Call restaurant and check table availability")
+    initial_greeting: Optional[str] = Field("Hello, I am calling on behalf of my operator regarding your services.")
     voice_name: Optional[str] = Field("alloy")
+    policy_max_duration: Optional[int] = Field(1800, example=1800)
+    policy_max_cost: Optional[int] = Field(5, example=5)
+    record_call: Optional[bool] = Field(False)
 
 class VoiceCallResponse(BaseModel):
     id: str
@@ -65,6 +93,10 @@ class VoiceCallResponse(BaseModel):
     direction: str
     from_number: str
     to_number: str
+    task: Optional[str] = None
+    policy_max_duration: Optional[int] = 1800
+    policy_max_cost: Optional[int] = 5
+    record_call: Optional[bool] = False
     status: str
     duration_seconds: int
     recording_url: Optional[str]
@@ -72,6 +104,7 @@ class VoiceCallResponse(BaseModel):
     summary: Optional[str]
     created_at: datetime
     ended_at: Optional[datetime]
+    operator_queries: Optional[List[OperatorQueryResponse]] = []
 
     class Config:
         from_attributes = True
@@ -84,6 +117,9 @@ class CarrierConfigUpdate(BaseModel):
     auth_token: Optional[str] = Field(None, example="your_auth_token")
     api_key: Optional[str] = Field(None, example="your_api_key")
     webhook_url: str = Field("", example="https://agent.example.com/api/webhooks/voice")
+    elks_username: Optional[str] = Field(None, example="u46elks...")
+    elks_password: Optional[str] = Field(None, example="46elks_password")
+    telnyx_api_key: Optional[str] = Field(None, example="KEY...")
     openai_api_key: Optional[str] = Field(None, example="sk-...")
     voice_name: str = Field("alloy", example="alloy")
     voice_model: str = Field("gpt-4o-realtime-preview", example="gpt-4o-realtime-preview")
@@ -97,6 +133,8 @@ class CarrierConfigResponse(BaseModel):
     auth_token_configured: bool
     api_key_configured: bool
     webhook_url: str
+    elks_configured: bool = False
+    telnyx_configured: bool = False
     openai_api_key_configured: bool
     voice_name: str
     voice_model: str

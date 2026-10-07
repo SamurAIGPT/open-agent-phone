@@ -21,10 +21,11 @@ Give autonomous AI agents real phone numbers, two-way SMS messaging, automated O
 
 - **📱 Dedicated Agent Phone Numbers**: Assign dedicated E.164 telephone lines to AI agents (supporting Twilio, Telnyx, 46elks, or local dev simulation).
 - **🔑 Automated 2FA & OTP Extraction**: Automated heuristic parser extracts 4–8 digit verification codes and one-time passwords from incoming SMS (e.g., Google, GitHub, Microsoft, Twilio), exposing a 1-call `GET /v1/sms/latest-code` and MCP tool.
-- **🎙️ Realtime Voice Call Bridging**: Wires telephone calls to the **OpenAI Realtime Voice API (`gpt-4o-realtime-preview`)** with natural speech turn-taking, multiple voice characters (`alloy`, `echo`, `shimmer`, `ash`, `verse`, `ballad`), and live call transcripts.
+- **🎙️ Realtime Voice Missions**: Autonomous goal-driven telephone calls powered by the **OpenAI Realtime Voice API (`gpt-4o-realtime-preview`)** with natural speech turn-taking, multiple voice characters (`alloy`, `echo`, `shimmer`, `ash`, `verse`, `ballad`), duration safety policies, and live transcripts.
+- **🙋 Human-in-the-Loop (`ask_operator`)**: Voice agents on live calls can ask their human operator questions in real time (e.g., confirming appointments or authorization). Operators receive notifications and answer directly from the dashboard or MCP.
 - **💬 Two-Way SMS Conversations**: Send and receive SMS text messages programmatically via REST API, WebSockets, or MCP tools.
-- **🤖 Model Context Protocol (MCP) Gateway**: Out-of-the-box MCP endpoint (`http://localhost:8001/mcp/rpc`) gives coding agents in **Cursor**, **Claude Code**, and **Windsurf** autonomous telephone and SMS capabilities.
-- **⚡ Live Event WebSocket Streaming**: Real-time WebSocket feed (`/v1/ws/live`) streams active calls, status changes, incoming texts, and extracted security codes with zero latency.
+- **🤖 Model Context Protocol (MCP) Gateway**: Out-of-the-box MCP endpoint (`http://localhost:8000/mcp/rpc`) gives coding agents in **Cursor**, **Claude Code**, and **Windsurf** autonomous telephone and SMS capabilities.
+- **⚡ Live Event WebSocket Streaming**: Real-time WebSocket feed (`/v1/ws/live`) streams active calls, status changes, incoming texts, operator queries, and extracted security codes with zero latency.
 
 ---
 
@@ -36,18 +37,20 @@ Give autonomous AI agents real phone numbers, two-way SMS messaging, automated O
          Inbound Voice  │                               │ Outbound Voice / SMS
          & SMS Texts    ▼                               │ (Twilio / Telnyx / 46elks)
   ┌─────────────────────────────────────────────────────┴─────────────────────┐
-  │                 Open Agent Phone Gateway (FastAPI :8001)                  │
+  │                 Open Agent Phone Gateway (FastAPI :8000)                  │
   │                                                                           │
   │  1. Telephony Webhook Ingest (Twilio TwiML / Telnyx Call Control)         │
   │  2. Heuristic Verification Code (OTP / 2FA) Extractor Engine              │
   │  3. Realtime Audio WebSocket Bridge (OpenAI Realtime Voice API)           │
-  │  4. Local SQLite / PostgreSQL Call & Message Store                        │
+  │  4. Human-in-the-Loop Operator Query Engine (ask_operator)                │
+  │  5. Local SQLite / PostgreSQL Call & Message Store                        │
   └───────────────────────────────┬───────────────────────────────────────────┘
                                   │  WebSockets / MCP / REST
                                   ▼
   ┌───────────────────────────────────────────────────────────────────────────┐
-  │     Next.js Dashboard (:3001)      ·     Coding Agents (Cursor / Claude)  │
-  │     • Live Call Center & Transcripts     • initiate_voice_call            │
+  │     Next.js Dashboard (:3000)      ·     Coding Agents (Cursor / Claude)  │
+  │     • Live Call Center & Transcripts     • start_phone_mission            │
+  │     • Operator Query Alert & Modal       • answer_operator_query          │
   │     • SMS Feed & OTP Code Card           • send_sms, list_sms_messages    │
   │     • Phone Line Provisioning            • get_latest_verification_code   │
   │     • Carrier & Voice Settings           • list_phone_numbers, list_calls │
@@ -78,13 +81,13 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Start server on port 8001
+# Start server on port 8000
 python run.py
 ```
 
 The server initializes:
-- **FastAPI HTTP API & MCP**: `http://127.0.0.1:8001`
-- **Interactive OpenAPI Docs**: `http://127.0.0.1:8001/docs`
+- **FastAPI HTTP API & MCP**: `http://127.0.0.1:8000`
+- **Interactive OpenAPI Docs**: `http://127.0.0.1:8000/docs`
 
 ### 2. Start the Next.js Dashboard
 
@@ -94,7 +97,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3001` in your browser.
+Open `http://localhost:3000` in your browser.
 
 ---
 
@@ -106,8 +109,8 @@ Run the complete gateway stack with Docker Compose:
 docker compose up -d --build
 ```
 
-- Web Dashboard: `http://localhost:3001`
-- REST API & MCP: `http://localhost:8001`
+- Web Dashboard: `http://localhost:3000`
+- REST API & MCP: `http://localhost:8000`
 
 ---
 
@@ -116,6 +119,8 @@ docker compose up -d --build
 ### 1. Carrier & Telephony Provider (`/settings`)
 Configure your telephony provider to connect to real phone networks:
 - **Twilio**: Account SID, Auth Token, Webhook URL.
+- **46elks**: API Username & Password.
+- **Telnyx**: API Key.
 - **OpenAI Realtime Voice API Key**: For natural voice conversation bridging during phone calls.
 - **Voice Character Selection**: Choose between `alloy`, `echo`, `shimmer`, `ash`, `verse`, or `ballad`.
 
@@ -136,6 +141,11 @@ Configure your telephony provider to connect to real phone networks:
   }
   ```
 
+### 4. Voice Missions & Operator Queries (`/calls`)
+- Launch goal-driven phone missions with an objective prompt and max duration policy.
+- Agents on a call can invoke `ask_operator` when human judgment is needed.
+- Operators receive instant notifications via WebSockets and can respond in the dashboard to resume the live call.
+
 ---
 
 ## 🤖 Coding Agent Integration (MCP)
@@ -149,7 +159,7 @@ Add to `.cursor/mcp.json` (or `~/.cursor/mcp.json`):
 {
   "mcpServers": {
     "open-agent-phone": {
-      "url": "http://127.0.0.1:8001/mcp/rpc"
+      "url": "http://127.0.0.1:8000/mcp/rpc"
     }
   }
 }
@@ -157,7 +167,7 @@ Add to `.cursor/mcp.json` (or `~/.cursor/mcp.json`):
 
 ### Claude Code Setup
 ```bash
-claude mcp add open-agent-phone http://127.0.0.1:8001/mcp/rpc
+claude mcp add open-agent-phone http://127.0.0.1:8000/mcp/rpc
 ```
 
 ### Available MCP Tools
@@ -167,8 +177,10 @@ claude mcp add open-agent-phone http://127.0.0.1:8001/mcp/rpc
 | `send_sms` | Sends an SMS text message to an external phone number from the agent. |
 | `list_sms_messages` | Fetches recent inbound and outbound SMS messages received or sent by the agent. |
 | `get_latest_verification_code` | Retrieves the latest 4-8 digit OTP verification code or 2FA security code received via SMS. |
-| `initiate_voice_call` | Places an outbound phone call to an external phone number using the AI voice concierge. |
-| `list_call_logs` | Fetches voice call logs, including duration, status, and transcripts. |
+| `start_phone_mission` | Starts an objective-driven phone call mission with a task, policy duration, and realtime voice agent. |
+| `answer_operator_query` | Answers a pending question raised by a voice agent mid-call (Human-in-the-Loop). |
+| `get_mission_status` | Checks the live status, transcript, and pending operator queries of a mission. |
+| `list_call_logs` | Fetches voice call logs, including duration, status, task, and transcripts. |
 
 ---
 

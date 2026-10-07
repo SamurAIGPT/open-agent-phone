@@ -189,3 +189,52 @@ async def get_latest_code(db: AsyncSession = Depends(get_db)):
         body=latest.body,
         received_at=latest.created_at
     )
+
+@router.post("/simulate-inbound", response_model=SmsResponse)
+async def simulate_inbound_sms(
+    from_number: str = "+18005550199",
+    to_number: str = "+12025550199",
+    body: str = "Your Google verification code is 738291. Do not share.",
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Simulates an incoming SMS message from an external service (e.g., 2FA/OTP from Google, GitHub).
+    Extracts the verification code and broadcasts real-time WebSocket events.
+    """
+    num_res = await db.execute(select(PhoneNumber).where(PhoneNumber.phone_number == to_number))
+    phone_record = num_res.scalar_one_or_none()
+
+    code = CodeExtractor.extract_code(body)
+    msg_id = f"sms_{uuid.uuid4().hex[:12]}"
+    sms = SmsMessage(
+        id=msg_id,
+        phone_number_id=phone_record.id if phone_record else None,
+        direction="inbound",
+        from_number=from_number,
+        to_number=to_number,
+        body=body,
+        status="received",
+        verification_code=code,
+        created_at=datetime.datetime.utcnow()
+    )
+    db.add(sms)
+    await db.commit()
+    await db.refresh(sms)
+
+    await ws_manager.broadcast_event("sms.received", {
+        "id": sms.id,
+        "from_number": sms.from_number,
+        "to_number": sms.to_number,
+        "body": sms.body,
+        "verification_code": sms.verification_code,
+        "created_at": sms.created_at.isoformat()
+    })
+
+    if code:
+        await ws_manager.broadcast_event("sms.code_extracted", {
+            "code": code,
+            "sms_id": sms.id,
+            "from_number": sms.from_number
+        })
+
+    return sms

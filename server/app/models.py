@@ -44,7 +44,11 @@ class VoiceCall(Base):
     direction = Column(String(16), nullable=False, index=True)  # inbound, outbound
     from_number = Column(String(32), nullable=False)
     to_number = Column(String(32), nullable=False)
-    status = Column(String(32), default="ringing", index=True)  # ringing, in_progress, completed, failed, busy
+    task = Column(Text, nullable=True)  # Mission objective / system instructions
+    policy_max_duration = Column(Integer, default=1800)  # max call duration in seconds
+    policy_max_cost = Column(Integer, default=5)  # cost cap in currency units
+    record_call = Column(Boolean, default=False)
+    status = Column(String(32), default="ringing", index=True)  # draft, dialing, connected, conversing, needs_operator, completed, failed
     duration_seconds = Column(Integer, default=0)
     recording_url = Column(Text, nullable=True)
     transcript = Column(Text, nullable=True)
@@ -53,6 +57,24 @@ class VoiceCall(Base):
     ended_at = Column(DateTime, nullable=True)
 
     number = relationship("PhoneNumber", back_populates="calls")
+    operator_queries = relationship("OperatorQuery", back_populates="call", cascade="all, delete-orphan")
+
+
+class OperatorQuery(Base):
+    __tablename__ = "operator_queries"
+
+    id = Column(String(64), primary_key=True, index=True)
+    call_id = Column(String(64), ForeignKey("voice_calls.id"), index=True, nullable=False)
+    question = Column(Text, nullable=False)
+    call_context = Column(String(255), nullable=True)
+    urgency = Column(String(16), default="normal")  # normal, high
+    status = Column(String(16), default="pending", index=True)  # pending, answered
+    answer = Column(Text, nullable=True)
+    asked_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    answered_at = Column(DateTime, nullable=True)
+    answered_via = Column(String(32), default="dashboard")
+
+    call = relationship("VoiceCall", back_populates="operator_queries")
 
 
 class CarrierConfig(Base):
@@ -64,6 +86,9 @@ class CarrierConfig(Base):
     auth_token = Column(String(255), default="")
     api_key = Column(String(255), default="")
     webhook_url = Column(String(255), default="")
+    elks_username = Column(String(255), default="")
+    elks_password = Column(String(255), default="")
+    telnyx_api_key = Column(String(255), default="")
     openai_api_key = Column(String(255), default="")
     voice_name = Column(String(32), default="alloy")
     voice_model = Column(String(64), default="gpt-4o-realtime-preview")

@@ -4,10 +4,11 @@ import {
   LatestCode,
   VoiceCall,
   CarrierConfig,
+  OperatorQuery,
   Stats
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
@@ -61,7 +62,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  // Voice Calls
+  // Voice Calls & Missions
   getCalls: (filters?: { status?: string; direction?: string }) => {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);
@@ -70,15 +71,45 @@ export const api = {
     return request<VoiceCall[]>(`/v1/calls${qs}`);
   },
   getCall: (id: string) => request<VoiceCall>(`/v1/calls/${id}`),
-  initiateCall: (data: { to_number: string; initial_greeting?: string; voice_name?: string; phone_number_id?: string }) =>
+  initiateCall: (data: {
+    to_number: string;
+    task?: string;
+    initial_greeting?: string;
+    voice_name?: string;
+    phone_number_id?: string;
+    policy_max_duration?: number;
+    policy_max_cost?: number;
+    record_call?: boolean;
+  }) =>
     request<VoiceCall>("/v1/calls/initiate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  completeCall: (id: string) =>
+    request<VoiceCall>(`/v1/calls/${id}/complete`, {
+      method: "POST",
+    }),
+  simulateVoiceTurn: (id: string, data?: { user_speech?: string; agent_speech?: string }) =>
+    request<VoiceCall>(`/v1/calls/${id}/simulate-turn?user_speech=${encodeURIComponent(data?.user_speech || "Hello, checking in")}&agent_speech=${encodeURIComponent(data?.agent_speech || "I am on it right away.")}`, {
+      method: "POST",
+    }),
+
+  // Human-in-the-Loop (Operator Queries)
+  getPendingQueries: () => request<OperatorQuery[]>("/v1/calls/queries/pending"),
+  createOperatorQuery: (callId: string, data: { question: string; call_context?: string; urgency?: string }) =>
+    request<OperatorQuery>(`/v1/calls/${callId}/operator-queries`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  answerOperatorQuery: (queryId: string, data: { answer: string; answered_via?: string }) =>
+    request<OperatorQuery>(`/v1/calls/queries/${queryId}/answer`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   // Carrier Config
   getCarrierConfig: () => request<CarrierConfig>("/v1/carrier"),
-  updateCarrierConfig: (data: Partial<CarrierConfig>) =>
+  updateCarrierConfig: (data: Partial<CarrierConfig> & Record<string, unknown>) =>
     request<CarrierConfig>("/v1/carrier", {
       method: "POST",
       body: JSON.stringify(data),

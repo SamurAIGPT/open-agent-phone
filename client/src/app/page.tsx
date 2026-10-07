@@ -217,7 +217,7 @@ export default function OverviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <code className="bg-[#0d1117] px-3 py-1.5 rounded border border-[#30363d] font-mono text-[11px] text-[#8b949e]">
-            http://127.0.0.1:8001/mcp/rpc
+            http://127.0.0.1:8000/mcp/rpc
           </code>
           <Link
             href="/mcp"
